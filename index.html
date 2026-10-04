@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prueba tiras LED</title>
+<style>
+:root{color-scheme:dark;--bg:#000;--card:#111318;--line:#23262e;--text:#f5f7fa;--mut:#8b93a1;--blue:#0a84ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:520px;margin:0 auto;padding:22px 18px 40px}
+h1{font-size:28px;margin:6px 0 4px;letter-spacing:-.02em}
+p{color:var(--mut);font-size:14px;line-height:1.5;margin:0 0 16px}
+button{font:inherit;color:var(--text);cursor:pointer}
+.main{width:100%;border:0;border-radius:18px;padding:16px;font-size:17px;font-weight:600;background:var(--blue);color:#fff;margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.row button{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.sw{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.sw button{width:44px;height:44px;border-radius:50%;border:2px solid var(--line)}
+label{font-size:13px;color:var(--mut);display:block;margin-bottom:6px}
+input[type=range]{width:100%;accent-color:var(--blue)}
+#st{font-size:14px;margin-top:8px;min-height:20px}
+button:disabled{opacity:.4}
+</style>
+</head>
+<body>
+<main>
+<h1>Prueba de tiras LED</h1>
+<p>Antes de empezar, cierra duoCo Strip y desconecta nRF Connect: las tiras solo aceptan una conexión a la vez.</p>
+<button class="main" id="con">Conectar con las tiras</button>
+<div class="row"><button id="on" disabled>Encender</button><button id="off" disabled>Apagar</button></div>
+<div class="card">
+<div class="sw" id="sw"></div>
+<label for="br">Brillo</label>
+<input type="range" id="br" min="5" max="100" value="100" disabled>
+</div>
+<div id="st"></div>
+</main>
+<script>
+var $=function(i){return document.getElementById(i)};
+var ch=null,cur=[255,0,0];
+function st(t){$('st').textContent=t}
+function send(r,g,b){
+  if(!ch){st('Primero conecta con las tiras.');return Promise.resolve()}
+  var d=new Uint8Array([0x7E,0x07,0x05,0x03,r,g,b,0x10,0xEF]);
+  var p=ch.writeValueWithoutResponse?ch.writeValueWithoutResponse(d):ch.writeValue(d);
+  return p.catch(function(e){st('Error al enviar: '+e.message)});
+}
+function show(){var k=$('br').value/100;send(Math.round(cur[0]*k),Math.round(cur[1]*k),Math.round(cur[2]*k))}
+function enable(v){['on','off','br'].forEach(function(i){$(i).disabled=!v})}
+$('con').onclick=function(){
+  if(!navigator.bluetooth){st('Este navegador no permite Bluetooth. Abre la página en Chrome del Xiaomi.');return}
+  navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0xFFF0]})
+  .then(function(d){st('Conectando con '+(d.name||'dispositivo')+'…');return d.gatt.connect()})
+  .then(function(s){return s.getPrimaryService(0xFFF0)})
+  .then(function(s){return s.getCharacteristic(0xFFF3)})
+  .then(function(c){ch=c;enable(true);st('Conectado. Prueba los botones.');show()})
+  .catch(function(e){st('No se pudo conectar: '+e.message)});
+};
+$('on').onclick=show;
+$('off').onclick=function(){send(0,0,0)};
+$('br').oninput=show;
+[[255,0,0],[10,132,255],[48,209,88],[255,159,10],[191,90,242],[255,255,255]].forEach(function(c){
+  var b=document.createElement('button');b.style.background='rgb('+c.join(',')+')';b.setAttribute('aria-label','Color');
+  b.onclick=function(){cur=c;show()};$('sw').appendChild(b)});
+</script>
+</body>
+</html>
