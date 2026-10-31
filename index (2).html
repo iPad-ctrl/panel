@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi habitación</title>
+<style>
+:root{color-scheme:dark;--bg:#000;--card:#111318;--card2:#1a1d24;--line:#23262e;--text:#f5f7fa;--mut:#8b93a1;--blue:#0a84ff;--blue2:#64b5ff;--led:#0a84ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:520px;margin:0 auto;padding:22px 18px 40px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:6px 0 2px}
+.sub{color:var(--mut);font-size:15px;margin:0 0 20px}
+.scene{width:100%;border:0;border-radius:22px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0a84ff,#0040a8);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;margin-bottom:14px}
+.scene small{display:block;font-weight:400;opacity:.8;font-size:13px;margin-top:2px}
+.scene:active{transform:scale(.98)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;min-height:118px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--text);font:inherit;cursor:pointer;transition:background .2s,border-color .2s}
+.tile .ico{width:38px;height:38px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:19px;transition:background .2s}
+.tile b{font-size:16px;font-weight:600;display:block}
+.tile span{font-size:13px;color:var(--mut)}
+.tile.on{background:#0d1a2b;border-color:#14407a}
+.tile.on .ico{background:var(--blue)}
+.tile.on span{color:var(--blue2)}
+.tile.wide{grid-column:1/-1}
+.tile:active{transform:scale(.97)}
+.led .ico{background:var(--led)!important;box-shadow:0 0 18px var(--led)}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:12px;display:none}
+.sheet.show{display:block}
+.sheet h2{font-size:17px;margin:0 0 14px;font-weight:600}
+.sw{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sw button{width:44px;height:44px;border-radius:50%;border:3px solid var(--card);outline:1px solid var(--line);cursor:pointer}
+.sw button.sel{outline:2px solid #fff}
+label{font-size:13px;color:var(--mut);display:block;margin-bottom:8px}
+input[type=range]{width:100%;accent-color:var(--blue);height:28px}
+.soon{opacity:.45}.con{width:100%;border:0;border-radius:14px;padding:14px;background:var(--blue);color:#fff;font:inherit;font-weight:600;font-size:16px;margin-bottom:10px}.msg{color:var(--mut);font-size:13px;margin:0 0 14px;min-height:16px}.note{color:var(--mut);font-size:12px;text-align:center;margin-top:22px;line-height:1.5}
+button:focus-visible{outline:2px solid var(--blue2);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="hi">Buenas noches</h1>
+  <p class="sub" id="date"></p>
+
+  <button class="scene" id="off"><span>Apagar habitación<small>Luz del techo y tiras LED</small></span><span style="font-size:26px">⏻</span></button>
+
+  <div class="grid">
+    <button class="tile led" id="t-led"><div class="ico">💡</div><div><b>Tiras LED</b><span id="s-led">Sin conectar</span></div></button>
+    <button class="tile soon" id="t-luz"><div class="ico">🔆</div><div><b>Luz del techo</b><span>Pronto</span></div></button>
+    <button class="tile wide soon" id="t-pc"><div class="ico">🖥️</div><div><b>PC</b><span>Pronto</span></div></button>
+  </div>
+
+  <section class="sheet" id="sheet">
+    <h2>Tiras LED</h2><button class="con" id="con">Conectar con las tiras</button><p class="msg" id="msg"></p>
+    <div class="sw" id="sw"></div>
+    <label for="br">Brillo</label>
+    <input type="range" id="br" min="5" max="100" value="100">
+  </section>
+
+  <p class="note">Las tiras LED ya son reales. Luz del techo y PC llegan en los próximos pasos.</p>
+</main>
+<script>
+var $=function(i){return document.getElementById(i)};
+var h=new Date().getHours();
+$('hi').textContent=h<6?'Buenas noches':h<13?'Buenos días':h<21?'Buenas tardes':'Buenas noches';
+$('date').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+var ch=null,cur=[10,132,255],ledOn=false;
+function msg(t){$('msg').textContent=t}
+function setLed(on){ledOn=on;$('t-led').classList.toggle('on',on&&!!ch);$('s-led').textContent=!ch?'Sin conectar':on?'Encendidas':'Apagadas'}
+function send(r,g,b){
+  if(!ch){msg('Primero conecta con las tiras.');return Promise.resolve()}
+  var d=new Uint8Array([0x7E,0x07,0x05,0x03,r,g,b,0x10,0xEF]);
+  var p=ch.writeValueWithoutResponse?ch.writeValueWithoutResponse(d):ch.writeValue(d);
+  return p.catch(function(e){msg('Error al enviar: '+e.message)});
+}
+function show(){var k=$('br').value/100;send(Math.round(cur[0]*k),Math.round(cur[1]*k),Math.round(cur[2]*k));setLed(true)}
+function hide(){send(0,0,0);setLed(false)}
+$('con').onclick=function(){
+  if(!navigator.bluetooth){msg('Abre esta página en Chrome para usar Bluetooth.');return}
+  navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0xFFF0]})
+  .then(function(d){msg('Conectando…');d.addEventListener('gattserverdisconnected',function(){ch=null;setLed(false);msg('Desconectado.')});return d.gatt.connect()})
+  .then(function(s){return s.getPrimaryService(0xFFF0)})
+  .then(function(s){return s.getCharacteristic(0xFFF3)})
+  .then(function(c){ch=c;msg('Conectado.');show()})
+  .catch(function(e){msg('No se pudo conectar: '+e.message)});
+};
+$('t-led').onclick=function(){if(!ch){$('sheet').classList.add('show');msg('Pulsa Conectar para empezar.');return}ledOn?hide():show();$('sheet').classList.toggle('show',ledOn)};
+var cols=[[10,132,255],[255,255,255],[255,55,95],[255,159,10],[48,209,88],[191,90,242],[100,210,255]];
+cols.forEach(function(c,i){var b=document.createElement('button');b.style.background='rgb('+c.join(',')+')';b.setAttribute('aria-label','Color '+(i+1));if(!i)b.className='sel';b.onclick=function(){document.querySelectorAll('#sw button').forEach(function(x){x.classList.remove('sel')});b.classList.add('sel');cur=c;document.documentElement.style.setProperty('--led','rgb('+c.join(',')+')');show()};$('sw').appendChild(b)});
+$('br').oninput=show;
+$('off').onclick=function(){hide();$('sheet').classList.remove('show')};
+</script>
+</body>
+</html>
